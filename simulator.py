@@ -23,11 +23,19 @@ class Simulator:
         self.car = RaceCar(self.rt.initial_state.T)
 
         self.lap_time_elapsed = 0
-        self.lap_start_time = None
+        self.simulation_time = 0
         self.lap_finished = False
         self.lap_started = False
+        
         self.track_limit_violations = 0
         self.currently_violating = False
+        
+        self.total_distance = 0.0
+        self.prev_position = self.car.state[0:2].copy()
+        
+        self.trajectory = []
+        # to skip 9 out of 10 frames
+        self.steps_per_frame = 10
 
     def check_track_limits(self):
         car_position = self.car.state[0:2]
@@ -78,11 +86,21 @@ class Simulator:
             self.axis.set_xlim(self.car.state[0] - 200, self.car.state[0] + 200)
             self.axis.set_ylim(self.car.state[1] - 200, self.car.state[1] + 200)
 
-            desired = controller(self.car.state, self.car.parameters, self.rt)
-            cont = lower_controller(self.car.state, desired, self.car.parameters)
-            self.car.update(cont)
-            self.update_status()
-            self.check_track_limits()
+            for _ in range(self.steps_per_frame):
+                desired = controller(self.car.state, self.car.parameters, self.rt)
+                cont = lower_controller(self.car.state, desired, self.car.parameters)
+                self.car.update(cont)
+                
+                self.simulation_time += self.car.time_step
+                
+                current_position = self.car.state[0:2]
+                self.total_distance += float(np.linalg.norm(current_position - self.prev_position))
+                self.prev_position = current_position.copy()
+                
+                self.update_status()
+                self.check_track_limits()
+                
+                self.trajectory.append([self.car.state[0], self.car.state[1], self.car.state[3]])
 
             self.axis.arrow(
                 self.car.state[0], self.car.state[1], \
@@ -108,6 +126,45 @@ class Simulator:
                 fontsize=8, color="Red"
             )
 
+            # print lap started boolean and speed
+            self.axis.text(
+                self.car.state[0] + 195, self.car.state[1] + 140, "Lap started: " + str(self.lap_started),
+                horizontalalignment="right", verticalalignment="top",
+                fontsize=8, color="Red"
+            )
+            avg_speed = self.total_distance / max(self.lap_time_elapsed, 0.001) if self.lap_started else 0
+            
+            self.axis.text(
+                self.car.state[0] + 195, self.car.state[1] + 110, 
+                f"Speed: {self.car.state[3]:.2f} m/s | Avg: {avg_speed:.2f} m/s",
+                horizontalalignment="right", verticalalignment="top",
+                fontsize=8, color="Red"
+            )
+            
+            self.axis.text(
+                self.car.state[0] + 195, self.car.state[1] + 95, 
+                f"Distance: {self.total_distance:.1f} m",
+                horizontalalignment="right", verticalalignment="top",
+                fontsize=8, color="Red"
+            )
+            
+            # plot trajectory with different colors based on speed
+            if len(self.trajectory) > 1:
+                trajectory_array = np.array(self.trajectory)
+                step = max(1, len(trajectory_array) // 1000)
+                for i in range(0, len(trajectory_array) - 1, step):
+                    speed = trajectory_array[i, 2]
+                    if speed < 20:
+                        color = 'red'
+                    elif speed < 50:
+                        ratio = (speed - 20) / 30
+                        color = (1.0, ratio * 0.65, 0.0)
+                    else:
+                        ratio = (speed - 50) / 50
+                        color = ((1.0 - ratio), 0.65 + ratio * 0.35, 0.0)
+                    self.axis.plot(trajectory_array[i:i+2, 0], trajectory_array[i:i+2, 1], 
+                                 color=color, linewidth=1.5, alpha=0.8)
+
             self.figure.canvas.draw()
             return True
 
@@ -120,16 +177,15 @@ class Simulator:
         if progress > 10.0 and not self.lap_started:
             self.lap_started = True
     
-        if progress <= 1.0 and self.lap_started and not self.lap_finished:
+        if progress <= 10.0 and self.lap_started and not self.lap_finished:
             self.lap_finished = True
-            self.lap_time_elapsed = time() - self.lap_start_time
+            self.lap_time_elapsed = self.simulation_time
+            print(f"Lap completed! Time: {self.lap_time_elapsed:.2f}s, Track violations: {self.track_limit_violations}")
 
-        if not self.lap_finished and self.lap_start_time is not None:
-            self.lap_time_elapsed = time() - self.lap_start_time
+        if not self.lap_finished and self.lap_started:
+            self.lap_time_elapsed = self.simulation_time
 
     def start(self):
-        # Run the simulation loop every 1 millisecond.
-        self.timer = self.figure.canvas.new_timer(interval=1)
+        self.timer = self.figure.canvas.new_timer(interval=10)
         self.timer.add_callback(self.run)
-        self.lap_start_time = time()
         self.timer.start()
