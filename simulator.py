@@ -10,9 +10,8 @@ from racecar import RaceCar
 from controller import lower_controller, controller
 
 class Simulator:
-
     def __init__(self, rt : RaceTrack):
-        matplotlib.rcParams["figure.dpi"] = 300
+        matplotlib.rcParams["figure.dpi"] = 250
         matplotlib.rcParams["font.size"] = 8
 
         self.rt = rt
