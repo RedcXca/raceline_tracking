@@ -34,7 +34,7 @@ class Simulator:
         
         self.trajectory = []
         # to skip 9 out of 10 frames
-        self.steps_per_frame = 10
+        self.steps_per_frame = 1
 
     def check_track_limits(self):
         car_position = self.car.state[0:2]
@@ -81,8 +81,8 @@ class Simulator:
             self.axis.cla()
             self.rt.plot_track(self.axis)
             # Zoom out more (±500 instead of ±200)
-            self.axis.set_xlim(self.car.state[0] - 500, self.car.state[0] + 500)
-            self.axis.set_ylim(self.car.state[1] - 500, self.car.state[1] + 500)
+            self.axis.set_xlim(self.car.state[0] - 200, self.car.state[0] + 200)
+            self.axis.set_ylim(self.car.state[1] - 200, self.car.state[1] + 200)
 
             for _ in range(self.steps_per_frame):
                 desired = controller(self.car.state, self.car.parameters, self.rt)
@@ -161,6 +161,6 @@ class Simulator:
             self.lap_time_elapsed = self.simulation_time
 
     def start(self):
-        self.timer = self.figure.canvas.new_timer(interval=10)
+        self.timer = self.figure.canvas.new_timer(interval=1)
         self.timer.add_callback(self.run)
         self.timer.start()

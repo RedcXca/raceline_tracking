@@ -3,16 +3,21 @@ from numpy.typing import ArrayLike
 from racetrack import RaceTrack
 
 dt = 0.1
-V_KP = 40
-STEER_KP = 12
-STEER_KI = 16
-STEER_KD = 0.15
+V_KP = 12
+STEER_KP = 16
+STEER_KI = 0
+STEER_KD = 0.6
 LOOKAHEAD = 25
 AHEAD_FOR_SPEED = 15   # how far ahead to check curvature for braking
 BLEND = 0.5 # how much of the raceline to use vs the centerline
 
 prevSteerErr = 0
 steerErrInt = 0
+prevYaw = 0
+DERIV_TAU = 0.15
+I_MIN = -0.2
+I_MAX = 0.2
+prevYawRateFiltered = 0.0
 
 def resample(path: np.ndarray, n: int) -> np.ndarray:
     # resample path to have exactly n points using linear interpolation
@@ -74,10 +79,10 @@ def steeringEffort(path: np.ndarray, width: np.ndarray, center_idx: int, window:
         if cross < 0:
             theta = -theta
             
-        theta = np.tan(theta * 2) / 2 if theta < 0.77 else 100
+        theta = np.tan(theta)
         theta = theta / width[i] * 10
 
-        efforts.append(theta)
+        efforts.append(theta * np.sqrt(norm1))
         # distance along the path corresponding to this angle
         distances.append(norm1)
 
@@ -96,8 +101,7 @@ def steeringEffort(path: np.ndarray, width: np.ndarray, center_idx: int, window:
     delta_effort_per_unit = np.abs(delta_effort) / np.maximum(delta_s, 1e-6)
 
     # take top-k largest per-unit steering changes
-    topk = np.sort(delta_effort_per_unit)[-5:]
-    avg_effort = np.mean(topk)
+    avg_effort = np.max(delta_effort_per_unit)
     return avg_effort
 
 def controller(state: ArrayLike, parameters: ArrayLike, racetrack: RaceTrack) -> ArrayLike:
@@ -122,10 +126,10 @@ def controller(state: ArrayLike, parameters: ArrayLike, racetrack: RaceTrack) ->
     nearestIndex = int(np.argmin(dists))
     speedLookaheadIndex = getLookaheadPointIndex(path, nearestIndex, LOOKAHEAD)
     
-    curv_future = 2 * steeringEffort(path, width, speedLookaheadIndex + AHEAD_FOR_SPEED, 40)
-    speed = min(np.sqrt(45 / max(abs(curv_future), 0.001)), parameters[5])  # max velocity
+    curv_future = 4 * steeringEffort(path, width, speedLookaheadIndex + AHEAD_FOR_SPEED, 40)
+    speed = np.clip(0 + 7 / max(abs(curv_future), 0.001), parameters[2], parameters[5])  # max velocity
     
-    lookahead_pen = int((100 - speed) / 8)
+    lookahead_pen = (100 - speed) / 8
     lookaheadIndex = getLookaheadPointIndex(path, nearestIndex, LOOKAHEAD - lookahead_pen)  
     
     vec = path[lookaheadIndex] - pos
@@ -142,29 +146,38 @@ def controller(state: ArrayLike, parameters: ArrayLike, racetrack: RaceTrack) ->
     return np.array([steer, speed], dtype=float)
 
 
-def lower_controller(state: ArrayLike, desired: ArrayLike, parameters: ArrayLike) -> ArrayLike:
-    global prevSteerErr, steerErrInt
+def lower_controller(state, desired, parameters):
+    global prevSteerErr, steerErrInt, prevYaw, prevYawRateFiltered
 
-    state = np.asarray(state, dtype=float)
-    desired = np.asarray(desired, dtype=float)
-    parameters = np.asarray(parameters, dtype=float)
+    yaw = state[2]
+    yaw_des = desired[0]
 
-    # Steering error
-    steerErr = (desired[0] - state[2] + np.pi) % (2 * np.pi) - np.pi
-    steerErrRate = (steerErr - prevSteerErr) / dt
-    steerErrInt += steerErr * dt  # accumulate integral
-    prevSteerErr = steerErr
+    # error
+    steerErr = (yaw_des - yaw + np.pi) % (2*np.pi) - np.pi
 
-    # PID for steering
-    steerRate = (
-        STEER_KP * steerErr +
-        STEER_KI * steerErrInt +
-        STEER_KD * steerErrRate
-    )
+    # derivative ON MEASUREMENT, not error
+    rawYawRate = (yaw - prevYaw) / dt
+    prevYaw = yaw
+
+    # low-pass filter
+    alpha = dt / (DERIV_TAU + dt)   # e.g. DERIV_TAU = 0.15
+    yawRateFiltered = (1 - alpha)*prevYawRateFiltered + alpha*rawYawRate
+    prevYawRateFiltered = yawRateFiltered
+
+    # PID (P + small filtered D)
+    P = STEER_KP * steerErr
+    D = - STEER_KD * yawRateFiltered   # minus sign for damping
+
+    # conditional integral: only when not saturated
+    tentative = P + D
+    if parameters[7] < tentative < parameters[9]:
+        steerErrInt += steerErr * dt
+    steerErrInt = np.clip(steerErrInt, I_MIN, I_MAX)
+    I = STEER_KI * steerErrInt
+
+    steerRate = P + I + D
     steerRate = np.clip(steerRate, parameters[7], parameters[9])
 
-    # Speed control (unchanged)
     accel = V_KP * (desired[1] - state[3])
     accel = np.clip(accel, parameters[8], parameters[10])
-
-    return np.array([steerRate, accel], dtype=float)
+    return np.array([steerRate, accel])
