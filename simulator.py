@@ -34,7 +34,7 @@ class Simulator:
         
         self.trajectory = []
         # to skip 9 out of 10 frames
-        self.steps_per_frame = 3
+        self.steps_per_frame = 10
 
     def check_track_limits(self):
         car_position = self.car.state[0:2]
@@ -79,11 +79,10 @@ class Simulator:
 
             self.figure.canvas.flush_events()
             self.axis.cla()
-
             self.rt.plot_track(self.axis)
-
-            self.axis.set_xlim(self.car.state[0] - 200, self.car.state[0] + 200)
-            self.axis.set_ylim(self.car.state[1] - 200, self.car.state[1] + 200)
+            # Zoom out more (±500 instead of ±200)
+            self.axis.set_xlim(self.car.state[0] - 500, self.car.state[0] + 500)
+            self.axis.set_ylim(self.car.state[1] - 500, self.car.state[1] + 500)
 
             for _ in range(self.steps_per_frame):
                 desired = controller(self.car.state, self.car.parameters, self.rt)
@@ -107,45 +106,22 @@ class Simulator:
                 self.car.wheelbase*np.sin(self.car.state[4])
             )
 
-            self.axis.text(
-                self.car.state[0] + 195, self.car.state[1] + 195, "Lap completed: " + str(self.lap_finished),
-                horizontalalignment="right", verticalalignment="top",
-                fontsize=8, color="Red"
-            )
-
-            self.axis.text(
-                self.car.state[0] + 195, self.car.state[1] + 170, "Lap time: " + f"{self.lap_time_elapsed:.2f}",
-                horizontalalignment="right", verticalalignment="top",
-                fontsize=8, color="Red"
-            )
-
-            self.axis.text(
-                self.car.state[0] + 195, self.car.state[1] + 155, "Track violations: " + str(self.track_limit_violations),
-                horizontalalignment="right", verticalalignment="top",
-                fontsize=8, color="Red"
-            )
-
-            # print lap started boolean and speed
-            self.axis.text(
-                self.car.state[0] + 195, self.car.state[1] + 140, "Lap started: " + str(self.lap_started),
-                horizontalalignment="right", verticalalignment="top",
-                fontsize=8, color="Red"
-            )
+            # Fixed HUD in top-right corner
             avg_speed = self.total_distance / max(self.lap_time_elapsed, 0.001) if self.lap_started else 0
             
-            self.axis.text(
-                self.car.state[0] + 195, self.car.state[1] + 110, 
-                f"Speed: {self.car.state[3]:.2f} m/s | Avg: {avg_speed:.2f} m/s",
-                horizontalalignment="right", verticalalignment="top",
-                fontsize=8, color="Red"
-            )
-            
-            self.axis.text(
-                self.car.state[0] + 195, self.car.state[1] + 95, 
-                f"Distance: {self.total_distance:.1f} m",
-                horizontalalignment="right", verticalalignment="top",
-                fontsize=8, color="Red"
-            )
+            hud_y = [0.98, 0.95, 0.92, 0.89, 0.86, 0.83]
+            self.axis.text(0.98, hud_y[0], f"Lap completed: {self.lap_finished}",
+                ha="right", va="top", fontsize=8, color="Red", transform=self.axis.transAxes)
+            self.axis.text(0.98, hud_y[1], f"Lap time: {self.lap_time_elapsed:.2f}",
+                ha="right", va="top", fontsize=8, color="Red", transform=self.axis.transAxes)
+            self.axis.text(0.98, hud_y[2], f"Track violations: {self.track_limit_violations}",
+                ha="right", va="top", fontsize=8, color="Red", transform=self.axis.transAxes)
+            self.axis.text(0.98, hud_y[3], f"Lap started: {self.lap_started}",
+                ha="right", va="top", fontsize=8, color="Red", transform=self.axis.transAxes)
+            self.axis.text(0.98, hud_y[4], f"Speed: {self.car.state[3]:.2f} m/s | Avg: {avg_speed:.2f} m/s",
+                ha="right", va="top", fontsize=8, color="Red", transform=self.axis.transAxes)
+            self.axis.text(0.98, hud_y[5], f"Distance: {self.total_distance:.1f} m",
+                ha="right", va="top", fontsize=8, color="Red", transform=self.axis.transAxes)
             
             # plot trajectory with different colors based on speed
             if len(self.trajectory) > 1:
