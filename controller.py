@@ -3,10 +3,10 @@ from numpy.typing import ArrayLike
 from racetrack import RaceTrack
 
 dt = 0.1
-V_KP = 15
+V_KP = 40
 STEER_KP = 12
 STEER_KI = 16
-STEER_KD = 0.2
+STEER_KD = 0.15
 LOOKAHEAD = 25
 AHEAD_FOR_SPEED = 15   # how far ahead to check curvature for braking
 BLEND = 0.5 # how much of the raceline to use vs the centerline
@@ -43,20 +43,20 @@ def getLookaheadPointIndex(path: np.ndarray, startIndex: int, distance: float) -
     
     return currentIndex
 
-def average_curvature(path: np.ndarray, center_idx: int, window: int = 10) -> float:
+def steeringEffort(path: np.ndarray, width: np.ndarray, center_idx: int, window: int = 10) -> float:
     """
     Compute a windowed steering effort metric, approximating how much the wheel
     must turn per unit distance along the path.
     """
     half_win = window // 2
     start_idx = max(center_idx - half_win, 1)  # need p1 for first segment
-    end_idx = min(center_idx + half_win, len(path) - 2)  # need p3 for last segment
+    end_idx = min(center_idx + half_win, len(path) - 3)  # need p3 for last segment
 
     efforts = []
     distances = []
 
     for i in range(start_idx, end_idx + 1):
-        p1, p2, p3 = path[i-1], path[i], path[i+1]
+        p1, p2, p3 = path[i-2], path[i], path[i+2]
 
         v1 = p2 - p1
         v2 = p3 - p2
@@ -73,6 +73,9 @@ def average_curvature(path: np.ndarray, center_idx: int, window: int = 10) -> fl
         cross = np.cross(v1, v2)
         if cross < 0:
             theta = -theta
+            
+        theta = np.tan(theta * 2) / 2 if theta < 0.77 else 100
+        theta = theta / width[i] * 10
 
         efforts.append(theta)
         # distance along the path corresponding to this angle
@@ -93,7 +96,7 @@ def average_curvature(path: np.ndarray, center_idx: int, window: int = 10) -> fl
     delta_effort_per_unit = np.abs(delta_effort) / np.maximum(delta_s, 1e-6)
 
     # take top-k largest per-unit steering changes
-    topk = np.sort(delta_effort_per_unit)[-3:]
+    topk = np.sort(delta_effort_per_unit)[-5:]
     avg_effort = np.mean(topk)
     return avg_effort
 
@@ -112,15 +115,17 @@ def controller(state: ArrayLike, parameters: ArrayLike, racetrack: RaceTrack) ->
         path = BLEND * race + (1 - BLEND) * center
     else:
         path = racetrack.centerline
+        
+    width = np.linalg.norm(racetrack.right_boundary - racetrack.left_boundary, axis=1)
     
     dists = np.linalg.norm(path - pos, axis=1)
     nearestIndex = int(np.argmin(dists))
     speedLookaheadIndex = getLookaheadPointIndex(path, nearestIndex, LOOKAHEAD)
     
-    curv_future = 2 * average_curvature(path, speedLookaheadIndex + AHEAD_FOR_SPEED, 25)
+    curv_future = 2 * steeringEffort(path, width, speedLookaheadIndex + AHEAD_FOR_SPEED, 40)
     speed = min(np.sqrt(45 / max(abs(curv_future), 0.001)), parameters[5])  # max velocity
     
-    lookahead_pen = int(speed / 30)
+    lookahead_pen = int((100 - speed) / 8)
     lookaheadIndex = getLookaheadPointIndex(path, nearestIndex, LOOKAHEAD - lookahead_pen)  
     
     vec = path[lookaheadIndex] - pos
