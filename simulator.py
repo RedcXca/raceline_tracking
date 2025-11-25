@@ -34,7 +34,7 @@ class Simulator:
         
         self.trajectory = []
         # to skip 9 out of 10 frames
-        self.steps_per_frame = 10
+        self.steps_per_frame = 3
 
     def check_track_limits(self):
         car_position = self.car.state[0:2]
