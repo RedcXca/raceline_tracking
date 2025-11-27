@@ -34,7 +34,7 @@ class Simulator:
         
         self.trajectory = []
         # to skip 9 out of 10 frames
-        self.steps_per_frame = 1
+        self.steps_per_frame = 5
 
     def check_track_limits(self):
         car_position = self.car.state[0:2]
@@ -161,6 +161,6 @@ class Simulator:
             self.lap_time_elapsed = self.simulation_time
 
     def start(self):
-        self.timer = self.figure.canvas.new_timer(interval=1)
+        self.timer = self.figure.canvas.new_timer(interval=10)
         self.timer.add_callback(self.run)
         self.timer.start()

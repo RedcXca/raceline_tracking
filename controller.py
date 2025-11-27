@@ -60,7 +60,7 @@ def steeringEffort(path: np.ndarray, width: np.ndarray, center_idx: int, window:
     efforts = []
     distances = []
 
-    for i in range(start_idx, end_idx + 1):
+    for i in range(start_idx, end_idx + 1, 2):
         p1, p2, p3 = path[i-2], path[i], path[i+2]
 
         v1 = p2 - p1
@@ -127,7 +127,7 @@ def controller(state: ArrayLike, parameters: ArrayLike, racetrack: RaceTrack) ->
     speedLookaheadIndex = getLookaheadPointIndex(path, nearestIndex, LOOKAHEAD)
     
     curv_future = 4 * steeringEffort(path, width, speedLookaheadIndex + AHEAD_FOR_SPEED, 40)
-    speed = np.clip(0 + 7 / max(abs(curv_future), 0.001), parameters[2], parameters[5])  # max velocity
+    speed = np.clip(15 + 8 / max(abs(curv_future), 0.001), parameters[2], parameters[5])  # max velocity
     
     lookahead_pen = (100 - speed) / 8
     lookaheadIndex = getLookaheadPointIndex(path, nearestIndex, LOOKAHEAD - lookahead_pen)  
