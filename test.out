@@ -1,1 +1,33 @@
+=== Testing All Tracks ===
+Running IMS (headless)
+Lap completed! Time: 42.50s, Track violations: 0
 Running Montreal (headless)
+Lap completed! Time: 57.40s, Track violations: 0
+Running Monza (headless)
+Lap completed! Time: 68.80s, Track violations: 0
+Running squeeze_x2_IMS (headless)
+Lap completed! Time: 36.80s, Track violations: 0
+Running squeeze_x2_Montreal (headless)
+Lap completed! Time: 52.40s, Track violations: 5
+Running squeeze_x2_Monza (headless)
+Lap completed! Time: 56.80s, Track violations: 3
+Running squeeze_y2_IMS (headless)
+Lap completed! Time: 28.90s, Track violations: 0
+Running squeeze_y2_Montreal (headless)
+Lap completed! Time: 187.40s, Track violations: 29
+Running squeeze_y2_Monza (headless)
+Lap completed! Time: 52.10s, Track violations: 4
+Running stretch_x2_IMS (headless)
+Lap completed! Time: 55.40s, Track violations: 0
+Running stretch_x2_Montreal (headless)
+Lap completed! Time: 74.80s, Track violations: 7
+Running stretch_x2_Monza (headless)
+Lap completed! Time: 98.00s, Track violations: 2
+Running stretch_y2_IMS (headless)
+Lap completed! Time: 71.20s, Track violations: 0
+Running stretch_y2_Montreal (headless)
+Lap completed! Time: 110.70s, Track violations: 5
+Running stretch_y2_Monza (headless)
+Lap completed! Time: 113.70s, Track violations: 3
+
+Done. Output saved to test.out

@@ -1,17 +1,25 @@
 #!/bin/bash
-# Runs all tracks in headless mode (steps=0) and writes output to test.out
-# Usage: ./run_all_headless.sh
+# Runs all track pairs in racetracks/ in headless mode and writes output to test.out
+# Pairs are matched as: <basename>.csv with <basename>_raceline.csv
+# Usage: ./test.sh
 
 OUT_FILE="test.out"
 > "$OUT_FILE"  # truncate/create
 
-echo "Running Montreal (headless)" | tee -a "$OUT_FILE"
-python main.py ./racetracks/Montreal.csv ./racetracks/Montreal_raceline.csv 0 >> "$OUT_FILE" 2>&1
+echo "=== Testing All Tracks ===" | tee -a "$OUT_FILE"
 
-echo "Running Monza (headless)" | tee -a "$OUT_FILE"
-python main.py ./racetracks/Monza.csv ./racetracks/Monza_raceline.csv 0 >> "$OUT_FILE" 2>&1
+# Find all *_raceline.csv files
+for raceline in racetracks/*_raceline.csv; do
+    # Extract basename (e.g., "Montreal" from "Montreal_raceline.csv")
+    base=$(basename "$raceline" _raceline.csv)
+    track="racetracks/${base}.csv"
+    
+    # Check if corresponding track file exists
+    if [[ -f "$track" ]]; then
+        echo "Running $base (headless)" | tee -a "$OUT_FILE"
+        python main.py "$track" "$raceline" 0 >> "$OUT_FILE" 2>&1
+    fi
+done
 
-echo "Running IMS (headless)" | tee -a "$OUT_FILE"
-python main.py ./racetracks/IMS.csv ./racetracks/IMS_raceline.csv 0 >> "$OUT_FILE" 2>&1
-
+echo "" | tee -a "$OUT_FILE"
 echo "Done. Output saved to $OUT_FILE" | tee -a "$OUT_FILE"
