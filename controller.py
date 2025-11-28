@@ -104,7 +104,7 @@ def steeringEffort(path: np.ndarray, width: np.ndarray, center_idx: int, window:
     avg_effort = np.max(delta_effort_per_unit)
     return avg_effort
 
-def controller(state: ArrayLike, parameters: ArrayLike, racetrack: RaceTrack) -> ArrayLike:
+def controller(state: ArrayLike, parameters: ArrayLike, racetrack: RaceTrack, elapsed_time: float = 0.0) -> ArrayLike:
     state = np.asarray(state, dtype=float)
     parameters = np.asarray(parameters, dtype=float)
 
@@ -116,7 +116,12 @@ def controller(state: ArrayLike, parameters: ArrayLike, racetrack: RaceTrack) ->
         center = racetrack.centerline
         if len(race) != len(center):
             center = resample(center, len(race))
-        path = BLEND * race + (1 - BLEND) * center
+        # Blend starts at centerline and ramps to BLEND over first 3 seconds
+        if elapsed_time < 3.0:
+            current_blend = BLEND * (elapsed_time / 3.0)
+        else:
+            current_blend = BLEND
+        path = current_blend * race + (1 - current_blend) * center
     else:
         path = racetrack.centerline
         
