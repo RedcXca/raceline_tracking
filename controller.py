@@ -9,7 +9,7 @@ STEER_KI = 0
 STEER_KD = 0.6
 LOOKAHEAD = 25
 AHEAD_FOR_SPEED = 15   # how far ahead to check curvature for braking
-BLEND = 0.3 # how much of the raceline to use vs the centerline
+BLEND = 0.5 # how much of the raceline to use vs the centerline
 
 prevSteerErr = 0
 steerErrInt = 0
