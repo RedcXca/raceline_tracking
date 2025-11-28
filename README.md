@@ -9,7 +9,17 @@
 ## To run
 
 ```bash
-python3 main.py ./racetracks/Montreal.csv ./racetracks/Montreal_raceline.csv
+python main.py ./racetracks/Montreal.csv ./racetracks/Montreal_raceline.csv
+
+# Optional: control rendering/headless via 3rd argument
+# 1  : render every frame (default if omitted)
+# 10 : skip 9 out of 10 frames (faster playback)
+# 0  : headless mode (no GUI; runs to completion)
+
+# Examples
+python main.py ./racetracks/Montreal.csv ./racetracks/Montreal_raceline.csv 1
+python main.py ./racetracks/Montreal.csv ./racetracks/Montreal_raceline.csv 10
+python main.py ./racetracks/Montreal.csv ./racetracks/Montreal_raceline.csv 0
 ```
 
 ## To design controller
